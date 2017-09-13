@@ -25,6 +25,9 @@ class ContractLine():
             l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
         return l
 
+    def __repr__(self):
+        return repr(self.instruction)
+
 class Contract():
     def __init__(self, code):
         self.code = code
@@ -33,21 +36,26 @@ class Contract():
         self.line_blocks = []
         self._symbolIdx = 0
 
-    def get_stack_args(self, num, block: List[ContractLine], offset):
+    def get_stack_args(self, num, block: List[ContractLine]):
         block = self.line_blocks[block]
         current_num = 0
-        for line_num in range(offset - 1, -1, -1):
+        for line_num in range(len(block) - 2, -1, -1):
             line = block[line_num]
             if 'PUSH' in line.instruction.name:
                 if current_num == num:
                     del block[line_num]
-                    return offset - 1, line.args[0]
+                    return 1, line.args[0]
+                current_num += 1
+            if 'DUP' in line.instruction.name:
+                if current_num == num:
+                    del block[line_num]
+                    return 0, line.args[-1]
                 current_num += 1
             for var in line.assignTo[::-1]:
                 if current_num == num:
-                    return offset, var
+                    return 0, var
                 current_num += 1
-        return offset, 'arg' + str(num - current_num)
+        return 0, 'arg' + str(num - current_num)
 
     def parse(self) -> List[ContractLine]:
         self.line_blocks = []
@@ -62,10 +70,12 @@ class Contract():
                 if operation.arguments:
                     in_variables = operation.arguments
                 else:
-                    for arg in range(operation.instruction.removed):
-                        new_instr_idx, arg = self.get_stack_args(arg, block_idx, instr_idx)
-                        in_variables.append(arg)
-                        instr_idx = new_instr_idx
+                    arg = 0
+                    while arg < operation.instruction.removed:
+                        new_instr_idx, a = self.get_stack_args(arg, block_idx)
+                        in_variables.append(a)
+                        instr_idx += new_instr_idx
+                        arg += 1
                 for i in range(operation.instruction.added):
                     out_variables.append('var' + str(self._symbolIdx))
                     self._symbolIdx += 1

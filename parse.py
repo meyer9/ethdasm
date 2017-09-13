@@ -13,6 +13,8 @@ class Instruction:
         self.instruction = instruction
         self.address = address
         self.arguments = arguments
+    def __repr__(self):
+        return self.instruction.name
 
 class Block:
     """
