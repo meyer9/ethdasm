@@ -19,7 +19,10 @@ class ContractLine():
         l = ""
         if self.assignTo:
             l += ', '.join(self.assignTo) + " = "
-        l += self.instruction.name + '({0})'.format(', '.join(self.args or []))
+        if not self.instruction.infix_operator:
+            l += self.instruction.name + '({0})'.format(', '.join(self.args or []))
+        else:
+            l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
         return l
 
 class Contract():
@@ -35,11 +38,16 @@ class Contract():
         current_num = 0
         for line_num in range(offset - 1, -1, -1):
             line = block[line_num]
+            if 'PUSH' in line.instruction.name:
+                if current_num == num:
+                    del block[line_num]
+                    return offset - 1, line.args[0]
+                current_num += 1
             for var in line.assignTo[::-1]:
                 if current_num == num:
-                    return var
+                    return offset, var
                 current_num += 1
-        return 'arg' + str(num - current_num)
+        return offset, 'arg' + str(num - current_num)
 
     def parse(self) -> List[ContractLine]:
         self.line_blocks = []
@@ -55,10 +63,13 @@ class Contract():
                     in_variables = operation.arguments
                 else:
                     for arg in range(operation.instruction.removed):
-                        in_variables.append(self.get_stack_args(arg, block_idx, instr_idx))
+                        new_instr_idx, arg = self.get_stack_args(arg, block_idx, instr_idx)
+                        in_variables.append(arg)
+                        instr_idx = new_instr_idx
                 for i in range(operation.instruction.added):
                     out_variables.append('var' + str(self._symbolIdx))
                     self._symbolIdx += 1
+                # if operation.
                 line.append(ContractLine(address=operation.address, assignTo=out_variables, instruction=operation.instruction, args=in_variables))
                 # self._symbolIdx += 1
                 instr_idx += 1
@@ -72,7 +83,7 @@ def main():
         for lines in blocks:
             print('===============BLOCK==============')
             for line in lines:
-                print('[{0}] {1}'.format(line.address, str(line)))
+                print('[{0}] {1}'.format(hex(line.address), str(line)))
 
 if __name__ == '__main__':
     main()

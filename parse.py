@@ -79,10 +79,14 @@ class Parser:
     def __optimize_jump_args(instructions: [Instruction]) -> [Instruction]:
         i = 0
         while i < len(instructions) - 1:
-            if ('PUSH' in instructions[i].instruction.name
-                    and 'JUMP' in instructions[i + 1].instruction.name):
-                instructions[i + 1].arguments = instructions[i].arguments
-                del instructions[i]
+            if 'PUSH' in instructions[i].instruction.name:
+                if 'JUMP' == instructions[i + 1].instruction.name:
+                    instructions[i + 1].arguments = instructions[i].arguments
+                    del instructions[i]
+                elif 'PUSH' in instructions[i + 1].instruction.name and 'JUMPI' == instructions[i + 2].instruction.name:
+                    instructions[i + 1].arguments = instructions[i].arguments + instructions[i + 1].arguments
+                    del instructions[i]
+                    del instructions[i + 1]
             i += 1
         return instructions
 
