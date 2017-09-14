@@ -1,5 +1,6 @@
 from typing import List
 from parse import Parser, Instruction
+import copy
 
 class ContractLine():
     """
@@ -36,26 +37,28 @@ class Contract():
         self.line_blocks = []
         self._symbolIdx = 0
 
-    def get_stack_args(self, num, block: List[ContractLine]):
-        block = self.line_blocks[block]
+    def get_stack_args(self, num, block_copy: List[ContractLine], block_idx: int):
+        block = self.line_blocks[block_idx]
         current_num = 0
-        for line_num in range(len(block) - 2, -1, -1):
-            line = block[line_num]
+        for line_num in range(len(block_copy) - 1, -1, -1):
+            line = block_copy[line_num]
             if 'PUSH' in line.instruction.name:
                 if current_num == num:
                     del block[line_num]
-                    return 1, line.args[0]
+                    return line.args[0]
                 current_num += 1
+                continue
             if 'DUP' in line.instruction.name:
                 if current_num == num:
                     del block[line_num]
-                    return 0, line.args[-1]
+                    return line.args[0]
                 current_num += 1
+                continue
             for var in line.assignTo[::-1]:
                 if current_num == num:
-                    return 0, var
+                    return var
                 current_num += 1
-        return 0, 'arg' + str(num - current_num)
+        return 'arg' + str(current_num - num)
 
     def parse(self) -> List[ContractLine]:
         self.line_blocks = []
@@ -71,10 +74,10 @@ class Contract():
                     in_variables = operation.arguments
                 else:
                     arg = 0
+                    block_copy = copy.copy(line)
                     while arg < operation.instruction.removed:
-                        new_instr_idx, a = self.get_stack_args(arg, block_idx)
+                        a = self.get_stack_args(arg, block_copy, block_idx)
                         in_variables.append(a)
-                        instr_idx += new_instr_idx
                         arg += 1
                 for i in range(operation.instruction.added):
                     out_variables.append('var' + str(self._symbolIdx))
