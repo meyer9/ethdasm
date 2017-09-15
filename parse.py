@@ -31,6 +31,9 @@ class Block:
         """
         self.instructions.append(instruction)
 
+class ParseException(Exception):
+    pass
+
 class Parser:
     """
     Parses EVM code into blocks of optimized code.
@@ -80,7 +83,7 @@ class Parser:
     @staticmethod
     def __optimize_jump_args(instructions: [Instruction]) -> [Instruction]:
         i = 0
-        while i < len(instructions) - 1:
+        while i < len(instructions) - 2:
             if 'PUSH' in instructions[i].instruction.name:
                 if 'JUMP' == instructions[i + 1].instruction.name:
                     instructions[i + 1].arguments = instructions[i].arguments
@@ -126,6 +129,8 @@ class Parser:
             if instructions[i].arguments is not None:
                 not_static = True
                 num_pushes = 0
+            if i - num_pushes < 0:
+                break
             for push_num in range(i - num_pushes, i):
                 not_static = not_static or 'PUSH' not in instructions[push_num].instruction.name
             if not_static:
