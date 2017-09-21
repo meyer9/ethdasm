@@ -1,37 +1,7 @@
-from typing import List
+from typing import List, Optional
 
 from opcodes import OpCode
 from parse import Parser, Instruction, Block
-
-
-class ContractLine():
-    """
-    Represents one line of code in the contract according to our pseudo-code.abs
-    In this case, args contains symbols.
-    """
-    address: int
-    assign_to: List[str]
-    instruction: Instruction
-    args: List
-
-    def __init__(self, address: int, assign_to: List[str], instruction: OpCode, args: List):
-        self.address = address
-        self.assign_to = assign_to
-        self.instruction = instruction
-        self.args = args
-
-    def __str__(self):
-        l = ""
-        if self.assign_to:
-            l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
-        if not self.instruction.infix_operator:
-            l += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
-        else:
-            l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
-        return l
-
-    def __repr__(self):
-        return repr(self.instruction)
 
 class Output():
     """
@@ -49,6 +19,64 @@ class Output():
         self.used = True
     def __str__(self):
         return self.value
+
+class ContractLine():
+    """
+    Represents one line of code in the contract.
+    """
+
+    address: int
+
+    def __init__(self, address: int):
+        self.address = address
+
+class InstructionLine(ContractLine):
+    """
+    Represents a single line of instruction in the contract excluding
+    control flow functions such as jumps.
+    """
+
+    assign_to: List[str]
+    instruction: Instruction
+    args: List
+
+    def __init__(self, address: int, assign_to: List[str], instruction: OpCode, args: List):
+        self.assign_to = assign_to
+        self.instruction = instruction
+        self.args = args
+        super().__init__(address)
+
+    def __str__(self):
+        l = ""
+        if self.assign_to:
+            l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
+        if not self.instruction.infix_operator:
+            l += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
+        else:
+            l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
+        return l
+
+    def __repr__(self):
+        return repr(self.instruction)
+
+class JumpLine(ContractLine):
+    """
+    Reprents a JUMP instruction or a JUMPI instruction.
+    """
+
+    jump_to: str
+    jump_condition: Optional[Output]
+
+    def __init__(self, address: int, jump_to: str, jump_condition: Optional[Output]):
+        self.jump_to = jump_to
+        self.jump_condition = jump_condition
+        super().__init__(address)
+
+    def __str__(self):
+        if self.jump_condition is not None:
+            return "if {}:\n\t{}()".format(self.jump_condition, self.jump_to)
+        else:
+            return "{}()".format(self.jump_to)
 
 
 class ContractBlock:
@@ -122,6 +150,44 @@ class Contract():
                     return var
         return None
 
+    def __simplify_pushes(self):
+        mapping = {}
+        for block in self.line_blocks:
+            for operation in block.lines:
+                if 'PUSH' in operation.instruction.name:
+                    mapping[operation.assign_to[0]] = operation.args[0]
+        for block in self.line_blocks:
+            for operation in block.lines:
+                for idx, arg in enumerate(operation.args):
+                    if arg in mapping:
+                        operation.args[idx] = mapping[arg]
+            i = 0
+            while i < len(block.lines):
+                operation = block.lines[i]
+                if 'PUSH' in operation.instruction.name:
+                    del block.lines[i]
+                    i -= 1
+                i += 1
+
+    def __simplify_variables(self):
+        mapping = {}
+        var_num = 1
+        for block in self.line_blocks:
+            for operation in block.lines:
+                for idx, arg in enumerate(operation.args):
+                    if 'var' in arg.value:
+                        if arg not in mapping:
+                            raise RuntimeError('Found arg without a mapping.', arg.value)
+                        operation.args[idx] = mapping[arg]
+                for idx, assignment in enumerate(operation.assign_to):
+                    if 'arg' not in assignment.value:
+                        out = Output('var{}'.format(var_num))
+                        print('mapping {} to {}'.format(assignment, out.value))
+                        mapping[assignment] = out
+                        operation.assign_to[idx] = out
+                        var_num += 1
+                        
+
     def parse(self) -> List[List[ContractLine]]:
         self.line_blocks = []
         block_idx = 0
@@ -147,8 +213,7 @@ class Contract():
                 for i in range(operation.instruction.added):
                     out_variables.append(Output('var' + str(self._symbolIdx)))
                     self._symbolIdx += 1
-                # if operation.
-                instruction = ContractLine(address=operation.address, assign_to=out_variables,
+                instruction = InstructionLine(address=operation.address, assign_to=out_variables,
                                            instruction=operation.instruction, args=in_variables)
                 line.add_line(instruction)
                 # self._symbolIdx += 1
@@ -163,12 +228,15 @@ class Contract():
                 idx += 1
             block_idx += 1
         self.line_blocks[0].name = 'main'
+        self.__simplify_pushes()
+        self.__simplify_variables()
         return self.line_blocks
 
 def main():
     with open('contract.evm', 'r') as contract:
         contract = Contract(contract.read())
         blocks = contract.parse()
+        print(list(blocks[0].lines))
         for lines in blocks:
             print(str(lines))
             for line in lines.lines:

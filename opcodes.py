@@ -90,7 +90,7 @@ for i in range(160, 165):
 
 for i in range(0, 256):
     if not _OPCODES.get(hex(i)[2:].zfill(2)):
-        _OPCODES[hex(i)[2:]] = OpCode('THROW', 0, 0, 0, None, None)
+        _OPCODES[hex(i)[2:].zfill(2)] = OpCode('THROW', 0, 0, 0, None, None)
 
 def get_opcode_by_code(sym):
     return _OPCODES[sym]
