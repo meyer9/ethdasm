@@ -1,9 +1,11 @@
 """
 Parses opcodes into blocks of simplified opcodes.
 """
-import opcodes as oc
 import math
 from typing import List
+
+import opcodes as oc
+
 
 class Instruction:
     instruction: oc.OpCode
@@ -129,6 +131,9 @@ class Parser:
             if instructions[i].arguments is not None:
                 not_static = True
                 num_pushes = 0
+            if 'DUP' in instructions[i].instruction.name or 'SWAP' in instructions[i].instruction.name:
+                i += 1
+                continue
             if i - num_pushes < 0:
                 break
             for push_num in range(i - num_pushes, i):
@@ -151,7 +156,7 @@ class Parser:
             equiv_func = instructions[i].instruction.equivalent_function
             if instructions[i].arguments and equiv_func and len(instructions[i].arguments) == instructions[i].instruction.removed:
                 equiv = hex(equiv_func(*map(lambda n: int(n, 16), instructions[i].arguments)))[2:]
-                push_num = min(math.ceil(len(equiv) / 2) - 1, 31)
+                push_num = int(min(math.ceil(len(equiv) / 2) - 1, 31))
                 op_code = hex(int('60', 16) + push_num)[2:]
                 instructions[i] = Instruction(oc.get_opcode_by_code(op_code), instructions[i].address, [equiv])
             i += 1

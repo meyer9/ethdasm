@@ -1,6 +1,8 @@
 from typing import List
-from parse import Parser, Instruction
-import copy
+
+from opcodes import OpCode
+from parse import Parser, Instruction, Block
+
 
 class ContractLine():
     """
@@ -8,18 +10,20 @@ class ContractLine():
     In this case, args contains symbols.
     """
     address: int
-    assignTo: List[str]
+    assign_to: List[str]
     instruction: Instruction
-    def __init__(self, address: int, assignTo: List[str], instruction: Instruction, args):
+    args: List
+
+    def __init__(self, address: int, assign_to: List[str], instruction: OpCode, args: List):
         self.address = address
-        self.assignTo = assignTo
+        self.assign_to = assign_to
         self.instruction = instruction
         self.args = args
 
     def __str__(self):
         l = ""
-        if self.assignTo:
-            l += ', '.join(map(lambda arg: arg.value, self.assignTo)) + " = "
+        if self.assign_to:
+            l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
         if not self.instruction.infix_operator:
             l += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
         else:
@@ -39,6 +43,9 @@ class Output():
         return self.value
 
 class Contract():
+    line_blocks: List[List[ContractLine]]
+    blocks: List[Block]
+
     def __init__(self, code):
         self.code = code
         self.blocks = Parser.parse(self.code)
@@ -49,45 +56,39 @@ class Contract():
         self.line_blocks = []
         self._symbolIdx = 0
 
-    def get_stack_args(self, num, block_copy: List[ContractLine], block_idx: int):
+    def get_stack_args(self, block_idx: int) -> Output:
         block = self.line_blocks[block_idx]
-        current_num = 0
-        for line_num in range(len(block_copy) - 1, -1, -1):
-            line = block_copy[line_num]
-            if 'PUSH' in line.instruction.name:
-                if current_num == num:
-                    del block[line_num]
-                    return line.args[0]
-                current_num += 1
-                continue
+        for line_num in range(len(block) - 1, -1, -1):
+            line = block[line_num]
             if 'DUP' in line.instruction.name:
-                print(line.args)
-                if current_num == num:
-                    del block[line_num]
-                    return line.args[0]
-                current_num += 1
-                continue
-            if 'SWAP' in line.instruction.name:
-                v = 0
-                while v < len(line.args):
-                    if current_num == num:
-                        if v == 0:
+                i = 0
+                while i < len(line.assign_to):
+                    if not line.assign_to[i].used:
+                        line.assign_to[i].use()
+                        if i == 0:
                             return line.args[-1]
-                        elif v + 1 == len(line.args):
+                        else:
+                            return line.args[i - 1]
+                    i += 1
+            if 'SWAP' in line.instruction.name:
+                i = 0
+                while i < len(line.assign_to):
+                    if not line.assign_to[i].used:
+                        line.assign_to[i].use()
+                        if i == 0:
+                            return line.args[-1]
+                        elif i == len(line.assign_to) - 1:
                             return line.args[0]
                         else:
-                            return line.args[v]
-                    v += 1
-                    current_num += 1
-                continue
-            for var in line.assignTo[::-1]:
-                if current_num == num:
+                            return line.args[i]
+                    i += 1
+            for var in line.assign_to[::-1]:
+                if not var.used:
                     var.use()
                     return var
-                current_num += 1
-        return Output('arg' + str(current_num - num))
+        return Output('arg')
 
-    def parse(self) -> List[ContractLine]:
+    def parse(self) -> List[List[ContractLine]]:
         self.line_blocks = []
         block_idx = 0
         for block in self.blocks:
@@ -101,24 +102,24 @@ class Contract():
                     in_variables = operation.arguments
                 else:
                     arg = 0
-                    block_copy = copy.copy(line)
                     while arg < operation.instruction.removed:
-                        a = self.get_stack_args(arg, block_copy, block_idx)
+                        a = self.get_stack_args(block_idx)
                         in_variables.append(a)
                         arg += 1
                 for i in range(operation.instruction.added):
                     out_variables.append(Output('var' + str(self._symbolIdx)))
                     self._symbolIdx += 1
                 # if operation.
-                line.append(ContractLine(address=operation.address, assignTo=out_variables, instruction=operation.instruction, args=in_variables))
+                instruction = ContractLine(address=operation.address, assign_to=out_variables,
+                                           instruction=operation.instruction, args=in_variables)
+                line.append(instruction)
                 # self._symbolIdx += 1
                 instr_idx += 1
             # for swap op codes, we have to wait until after parsing to remove them
 
             idx = 0
             while idx < len(line):
-                if 'SWAP' in line[idx].instruction.name:
-                    print('deleting ' + str(line[idx].instruction.name) )
+                if 'SWAP' in line[idx].instruction.name or 'DUP' in line[idx].instruction.name:
                     del line[idx]
                     idx -= 1
                 idx += 1
