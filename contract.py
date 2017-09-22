@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from opcodes import OpCode
+from opcodes import OpCode, get_opcode_by_mnemonic
 from parse import Parser, Instruction, Block
 
 class Output():
@@ -67,14 +67,16 @@ class JumpLine(ContractLine):
     jump_to: str
     jump_condition: Optional[Output]
 
-    def __init__(self, address: int, jump_to: str, jump_condition: Optional[Output]):
+    def __init__(self, address: int, jump_to: str, jump_condition: Optional[Output]=None):
         self.jump_to = jump_to
+        if self.jump_to is None:
+            self.jump_to = 'THROW'
         self.jump_condition = jump_condition
         super().__init__(address)
 
     def __str__(self):
         if self.jump_condition is not None:
-            return "if {}:\n\t{}()".format(self.jump_condition, self.jump_to)
+            return "if {}: {}()".format(self.jump_condition, self.jump_to)
         else:
             return "{}()".format(self.jump_to)
 
@@ -182,12 +184,32 @@ class Contract():
                 for idx, assignment in enumerate(operation.assign_to):
                     if 'arg' not in assignment.value:
                         out = Output('var{}'.format(var_num))
-                        print('mapping {} to {}'.format(assignment, out.value))
                         mapping[assignment] = out
                         operation.assign_to[idx] = out
                         var_num += 1
-                        
 
+    def __get_func(self, func_hex):
+        if 'arg' in func_hex:
+            return func_hex
+        else:
+            jump_addr = int(func_hex, 16)
+            func = self.functions.get(jump_addr)
+            if func is not None:
+                return func.name
+            else:
+                return None
+
+    def __replace_functions(self):
+        print(self.functions)
+        for block in self.line_blocks:
+            for idx, operation in enumerate(block.lines):
+                if operation.instruction.name == 'JUMP':
+                    func = self.__get_func(operation.args[0].value)
+                    block.lines[idx] = JumpLine(operation.address, func)
+                elif operation.instruction.name == 'JUMPI':
+                    func = self.__get_func(operation.args[0].value)
+                    block.lines[idx] = JumpLine(operation.address, func, operation.args[1])
+    
     def parse(self) -> List[List[ContractLine]]:
         self.line_blocks = []
         block_idx = 0
@@ -199,6 +221,8 @@ class Contract():
             self.line_blocks.append(line)
             instr_idx = 0
             for operation in block.instructions:
+                if operation.instruction.name == 'JUMPDEST':
+                    continue
                 in_variables = []
                 out_variables = []
                 if operation.arguments:
@@ -230,6 +254,7 @@ class Contract():
         self.line_blocks[0].name = 'main'
         self.__simplify_pushes()
         self.__simplify_variables()
+        self.__replace_functions()
         return self.line_blocks
 
 def main():
