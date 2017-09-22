@@ -200,7 +200,6 @@ class Contract():
                 return None
 
     def __replace_functions(self):
-        print(self.functions)
         for block in self.line_blocks:
             for idx, operation in enumerate(block.lines):
                 if operation.instruction.name == 'JUMP':
@@ -256,16 +255,3 @@ class Contract():
         self.__simplify_variables()
         self.__replace_functions()
         return self.line_blocks
-
-def main():
-    with open('contract.evm', 'r') as contract:
-        contract = Contract(contract.read())
-        blocks = contract.parse()
-        print(list(blocks[0].lines))
-        for lines in blocks:
-            print(str(lines))
-            for line in lines.lines:
-                print("\t" * lines.indentation_level + '{1}'.format(hex(line.address), str(line)))
-            print()
-if __name__ == '__main__':
-    main()
