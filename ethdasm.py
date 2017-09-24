@@ -9,7 +9,7 @@ parser.add_argument('--disassemble', action='store_true', help='disassembly cont
 parser.add_argument('--out', type=str, help='outputs to a file; outputs to STDOUT if not specified')
 args = parser.parse_args()
 
-with open('contract.evm', 'r') as contract:
+with open(args.input, 'r') as contract:
     contract_data = contract.read()
     contract_data = contract_data.replace('0x', '')
     contract_data = contract_data.lower()
