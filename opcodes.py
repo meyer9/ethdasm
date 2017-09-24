@@ -93,7 +93,7 @@ for i in range(0, 256):
         _OPCODES[hex(i)[2:].zfill(2)] = OpCode('THROW', 0, 0, 0, None, None)
 
 def get_opcode_by_code(sym):
-    return _OPCODES[sym]
+    return _OPCODES.get(sym, OpCode('NOP', 0, 0, 0, None, None))
 
 def get_opcode_by_mnemonic(mne):
     i = 0

@@ -4,8 +4,8 @@ def main():
 	var2 = ISZERO(var1)
 	if var2: func1()
 	var3 = CALLDATALOAD(00)
-	var4 = var3 // 100000000000000000000000000000000000000000000000000000000
-	var5 = var4 == 41c0e1b5
+	var4 = var3 // 0x100000000000000000000000000000000000000000000000000000000
+	var5 = var4 == 0x41c0e1b5
 	if var5: func2()
 	var6 = f3fef3a3 == var4
 	if var6: func3()
@@ -13,7 +13,7 @@ def main():
 def func1():
 	var7 = MLOAD(40)
 	var8 = CALLER()
-	var9 = ffffffffffffffffffffffffffffffffffffffff & var8
+	var9 = 0xffffffffffffffffffffffffffffffffffffffff & var8
 	MSTORE(var7, var9)
 	var10 = CALLVALUE()
 	var11 = var7 + 20
@@ -28,14 +28,14 @@ def func2():
 	var15 = CALLVALUE()
 	if var15: THROW()
 	var16 = SLOAD(00)
-	var17 = ffffffffffffffffffffffffffffffffffffffff & var16
+	var17 = 0xffffffffffffffffffffffffffffffffffffffff & var16
 	var18 = CALLER()
-	var19 = var18 & ffffffffffffffffffffffffffffffffffffffff
+	var19 = var18 & 0xffffffffffffffffffffffffffffffffffffffff
 	var20 = var19 == var17
 	var21 = ISZERO(var20)
 	if var21: THROW()
 	var22 = SLOAD(00)
-	var23 = ffffffffffffffffffffffffffffffffffffffff & var22
+	var23 = 0xffffffffffffffffffffffffffffffffffffffff & var22
 	SUICIDE(var23)
 
 def func3():
@@ -44,13 +44,13 @@ def func3():
 	var25 = CALLDATALOAD(04)
 	var26 = CALLDATALOAD(24)
 	var27 = SLOAD(00)
-	var28 = ffffffffffffffffffffffffffffffffffffffff & var27
+	var28 = 0xffffffffffffffffffffffffffffffffffffffff & var27
 	var29 = CALLER()
-	var30 = var29 & ffffffffffffffffffffffffffffffffffffffff
+	var30 = var29 & 0xffffffffffffffffffffffffffffffffffffffff
 	var31 = var30 == var28
 	var32 = ISZERO(var31)
 	if var32: THROW()
-	var33 = var25 & ffffffffffffffffffffffffffffffffffffffff
+	var33 = var25 & 0xffffffffffffffffffffffffffffffffffffffff
 	var34 = ISZERO(var26)
 	var35 = var34 * 08fc
 	var36 = CALL(var35, var33, var26, 60, 00, 60, 00)
@@ -61,7 +61,7 @@ def func3():
 	var37 = ISZERO(var36)
 	if var37: THROW()
 	var38 = MLOAD(40)
-	var39 = var25 & ffffffffffffffffffffffffffffffffffffffff
+	var39 = var25 & 0xffffffffffffffffffffffffffffffffffffffff
 	MSTORE(var38, var39)
 	var40 = var38 + 20
 	MSTORE(var40, var26)
@@ -75,4 +75,3 @@ def func3():
 
 def func4():
 	STOP()
-
