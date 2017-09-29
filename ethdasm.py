@@ -22,7 +22,7 @@ with open(args.input, 'r') as contract:
             for line in lines.lines:
                 output += "\t" * lines.indentation_level + '{1}'.format(hex(line.address), str(line)) + '\n'
             output += '\n'
-    elif args.disassemble:
+    else:
         blocks = Parser.parse(contract_data)
         output = ""
         for block in blocks:
