@@ -3,6 +3,8 @@ ethdasm aims to be a disassembler tool for the EVM. It will feature symbol detec
 
 ETH: 0x56489eCd3A53bF6407438c28112Ae6956BB5b1EA
 
+Thank you so much for the donations!
+
 ## Prerequisites
 - Python 3.5 or greater
 
