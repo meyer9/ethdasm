@@ -1,7 +1,6 @@
 """
 Stores all information about different _OPCODES.
 """
-import collections
 import typing
 
 class OpCode(typing.NamedTuple):
@@ -9,8 +8,8 @@ class OpCode(typing.NamedTuple):
     removed: int
     added: int
     args: int
-    equivalent_function: typing.Callable
-    infix_operator: str
+    equivalent_function: typing.Optional[typing.Callable]
+    infix_operator: typing.Optional[str]
 
 _OPCODES = {
   '00': OpCode(name = 'STOP', removed = 0, added = 0, args = 0, equivalent_function = None, infix_operator=None),
@@ -50,6 +49,8 @@ _OPCODES = {
   '3a': OpCode(name = 'GASPRICE', removed = 0, added = 1, args = 0, equivalent_function = None, infix_operator=None),
   '3b': OpCode(name = 'EXTCODESIZE', removed = 1, added = 1, args = 0, equivalent_function = None, infix_operator=None),
   '3c': OpCode(name = 'EXTCODECOPY', removed = 4, added = 0, args = 0, equivalent_function = None, infix_operator=None),
+    '3d': OpCode(name='RETURNDATASIZE', removed=0, added=1, args=0, equivalent_function=None, infix_operator=None),
+    '3e': OpCode(name='RETURNDATACOPY', removed=3, added=0, args=0, equivalent_function=None, infix_operator=None),
   '40': OpCode(name = 'BLOCKHASH', removed = 1, added = 1, args = 0, equivalent_function = None, infix_operator=None),
   '41': OpCode(name = 'COINBASE', removed = 0, added = 1, args = 0, equivalent_function = None, infix_operator=None),
   '42': OpCode(name = 'TIMESTAMP', removed = 0, added = 1, args = 0, equivalent_function = None, infix_operator=None),
@@ -73,6 +74,8 @@ _OPCODES = {
   'f2': OpCode(name = 'CALLCODE', removed = 7, added = 1, args = 0, equivalent_function = None, infix_operator=None),
   'f3': OpCode(name = 'RETURN', removed = 2, added = 0, args = 0, equivalent_function = None, infix_operator=None),
   'f4': OpCode(name = 'DELEGATECALL', removed = 6, added = 1, args = 0, equivalent_function = None, infix_operator=None),
+    'fa': OpCode(name='STATICCALL', removed=6, added=1, args=0, equivalent_function=None, infix_operator=None),
+    'fd': OpCode(name='REVERT', removed=2, added=0, args=0, equivalent_function=None, infix_operator=None),
   'ff': OpCode(name = 'SUICIDE', removed = 1, added = 0, args = 0, equivalent_function = None, infix_operator=None)
 }
 
