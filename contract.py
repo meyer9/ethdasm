@@ -1,9 +1,10 @@
 from typing import List, Optional
 
-from opcodes import OpCode, get_opcode_by_mnemonic
+from opcodes import OpCode
 from parse import Parser, Instruction, Block
 
-class Output():
+
+class Output:
     """
     Represents the output of an instruction. Also can be considered
     a single value on the stack. Can be used.
@@ -11,16 +12,19 @@ class Output():
     def __init__(self, value):
         self.value = value
         self.used = False
+
     def use(self):
         """
         Use the value on the stack. Once used, this value should not be
         used again.
         """
         self.used = True
-    def __str__(self):
-        return self.value
 
-class ContractLine():
+    def __str__(self):
+        return self.value if type(self.value) == str else hex(self.value)
+
+
+class ContractLine:
     """
     Represents one line of code in the contract.
     """
@@ -29,6 +33,7 @@ class ContractLine():
 
     def __init__(self, address: int):
         self.address = address
+
 
 class InstructionLine(ContractLine):
     """
@@ -47,21 +52,22 @@ class InstructionLine(ContractLine):
         super().__init__(address)
 
     def __str__(self):
-        l = ""
+        output_str = ""
         if self.assign_to:
-            l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
+            output_str += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
         if not self.instruction.infix_operator:
-            l += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
+            output_str += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
         else:
-            l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
-        return l
+            output_str += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
+        return output_str
 
     def __repr__(self):
         return repr(self.instruction)
 
+
 class JumpLine(ContractLine):
     """
-    Reprents a JUMP instruction or a JUMPI instruction.
+    Represents a JUMP instruction or a JUMPI instruction.
     """
 
     jump_to: str
@@ -101,7 +107,7 @@ class ContractBlock:
         return "def {}({}):".format(self.name, ", ".join(map(lambda x: "arg" + str(x), range(self.args_needed))))
 
 
-class Contract():
+class Contract:
     """
     Represents an entire Ethereum contract. Keeps track of symbols,
     parses opcodes into pseudo-code, and simplifies the pseudo-code.
@@ -120,7 +126,7 @@ class Contract():
         self._symbolIdx = 0
         self.functions = {}
 
-    def get_stack_args(self, block_idx: int) -> Output:
+    def get_stack_args(self, block_idx: int) -> Optional[Output]:
         block = self.line_blocks[block_idx].lines
         for line_num in range(len(block) - 1, -1, -1):
             line = block[line_num]
@@ -177,7 +183,7 @@ class Contract():
         for block in self.line_blocks:
             for operation in block.lines:
                 for idx, arg in enumerate(operation.args):
-                    if 'var' in arg.value:
+                    if type(arg.value) == str and 'var' in arg.value:
                         if arg not in mapping:
                             raise RuntimeError('Found arg without a mapping.', arg.value)
                         operation.args[idx] = mapping[arg]
@@ -189,10 +195,10 @@ class Contract():
                         var_num += 1
 
     def __get_func(self, func_hex):
-        if 'arg' in func_hex:
+        if type(func_hex) == str and 'arg' in func_hex:
             return func_hex
         else:
-            jump_addr = int(func_hex, 16)
+            jump_addr = func_hex
             func = self.functions.get(jump_addr)
             if func is not None:
                 return func.name
@@ -208,8 +214,8 @@ class Contract():
                 elif operation.instruction.name == 'JUMPI':
                     func = self.__get_func(operation.args[0].value)
                     block.lines[idx] = JumpLine(operation.address, func, operation.args[1])
-    
-    def parse(self) -> List[List[ContractLine]]:
+
+    def parse(self) -> List[ContractBlock]:
         self.line_blocks = []
         block_idx = 0
         func_num = 0
@@ -237,7 +243,7 @@ class Contract():
                     out_variables.append(Output('var' + str(self._symbolIdx)))
                     self._symbolIdx += 1
                 instruction = InstructionLine(address=operation.address, assign_to=out_variables,
-                                           instruction=operation.instruction, args=in_variables)
+                                              instruction=operation.instruction, args=in_variables)
                 line.add_line(instruction)
                 # self._symbolIdx += 1
                 instr_idx += 1

@@ -11,12 +11,15 @@ class Instruction:
     instruction: oc.OpCode
     address: int
     arguments: List[str]
+
     def __init__(self, instruction: oc.OpCode, address: int, arguments: List[str]):
         self.instruction = instruction
         self.address = address
         self.arguments = arguments
+
     def __repr__(self):
         return self.instruction.name
+
 
 class Block:
     """
@@ -33,8 +36,10 @@ class Block:
         """
         self.instructions.append(instruction)
 
+
 class ParseException(Exception):
     pass
+
 
 class Parser:
     """
@@ -56,12 +61,12 @@ class Parser:
             contract_code = contract_code[2:]
             offset += 1
             instr = oc.get_opcode_by_code(instruction)
-            args = ''
+            args = []
             if instr.args > 0:
-                args = contract_code[0:2 * instr.args]
+                args = [int(contract_code[0:2 * instr.args], 16)]
                 contract_code = contract_code[2 * instr.args:]
                 offset += instr.args
-            opcodes.append(Instruction(instr, address, [args] if args else None))
+            opcodes.append(Instruction(instr, address, args))
             address += offset
         return opcodes
 
@@ -101,7 +106,7 @@ class Parser:
     def __optimize(instructions: [Instruction]) -> [Instruction]:
         Parser.__optimize_jump_args(instructions)
         last_len = len(instructions) + 1
-        for i in range(2):
+        while last_len > len(instructions):
             last_len = len(instructions)
             Parser.__optimize_arguments(instructions)
             Parser.__optimize_math(instructions)
@@ -128,7 +133,7 @@ class Parser:
             num_pushes = instructions[i].instruction.removed
             args = []
             not_static = num_pushes == 0
-            if instructions[i].arguments is not None:
+            if len(instructions[i].arguments) > 0:
                 not_static = True
                 num_pushes = 0
             if 'DUP' in instructions[i].instruction.name or 'SWAP' in instructions[i].instruction.name:
@@ -150,13 +155,18 @@ class Parser:
         return instructions
 
     @staticmethod
+    def __get_num_bytes(num: int):
+        return math.ceil(math.log(num) / 8)
+
+    @staticmethod
     def __optimize_math(instructions: [Instruction]) -> [Instruction]:
         i = 0
         while i < len(instructions):
             equiv_func = instructions[i].instruction.equivalent_function
             if instructions[i].arguments and equiv_func and len(instructions[i].arguments) == instructions[i].instruction.removed:
-                equiv = hex(equiv_func(*map(lambda n: int(n, 16), instructions[i].arguments)))[2:]
-                push_num = int(min(math.ceil(len(equiv) / 2) - 1, 31))
+                print(instructions[i].arguments)
+                equiv = equiv_func(*instructions[i].arguments)
+                push_num = int(min(Parser.__get_num_bytes(equiv), 31))
                 op_code = hex(int('60', 16) + push_num)[2:]
                 instructions[i] = Instruction(oc.get_opcode_by_code(op_code), instructions[i].address, [equiv])
             i += 1

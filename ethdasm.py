@@ -1,4 +1,5 @@
 import argparse
+
 from contract import Contract
 from parse import Parser
 
@@ -8,6 +9,13 @@ parser.add_argument('--decompile', action='store_true', help='decompiles the con
 parser.add_argument('--disassemble', action='store_true', help='disassembly contract into simplified op-codes')
 parser.add_argument('--out', type=str, help='outputs to a file; outputs to STDOUT if not specified')
 args = parser.parse_args()
+
+
+def format_arguments(args):
+    if len(args) == 0:
+        return None
+    else:
+        return list(map(lambda n: hex(n), args))
 
 with open(args.input, 'r') as contract:
     contract_data = contract.read()
@@ -32,7 +40,7 @@ with open(args.input, 'r') as contract:
                 output += '[{0: >8}] | {1: <20} | {2}'.format(
                     hex(operation.address),
                     operation.instruction.name,
-                    operation.arguments) + '\n'
+                    format_arguments(operation.arguments)) + '\n'
     if args.out:
         with open(args.out, 'w') as output_file:
             output_file.write(output)
