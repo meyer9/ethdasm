@@ -78,8 +78,7 @@ class Parser:
                 blocks.append(current_block)
                 current_block = Block(operation.address)
             current_block.add_instruction(operation)
-        if len(blocks) == 0:
-            blocks.append(current_block)
+        blocks.append(current_block)
         return blocks
 
     @staticmethod

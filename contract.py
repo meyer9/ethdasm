@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Iterator
 
 from opcodes import OpCode, get_opcode_by_mnemonic
 from parse import Parser, Instruction, Block
@@ -84,6 +84,7 @@ class JumpLine(ContractLine):
 class ContractBlock:
     
     args_needed: int
+    return_vals: List[Output]
     lines: List[ContractLine]
     name: str
     indentation_level: int
@@ -93,13 +94,40 @@ class ContractBlock:
         self.lines = []
         self.name = name
         self.indentation_level = 1
+        self.return_vals = []
     
     def add_line(self, line: ContractLine):
         self.lines.append(line)
     
     def __str__(self):
-        return "def {}({}):".format(self.name, ", ".join(map(lambda x: "arg" + str(x), range(self.args_needed))))
+        return "def {}({}):".format(self.name, ", ".join(map(lambda x: "arg" + str(x), range(self.args_needed))), list(map(str, self.return_vals)))
 
+
+class FunctionHandler:
+    """
+    Keeps track of function references
+    """
+
+    def __init__(self):
+        self.__function_dict = {}
+        self.__function_list = []
+    
+    def add_func(self, address: int, line: ContractBlock):
+        self.__function_dict[address] = line
+        self.__function_list.append(address)
+    
+    def blocks(self) -> Iterator[ContractBlock]:
+        for addr in self.__function_list:
+            yield self.__function_dict[addr]
+    
+    def get_func_at_index(self, i: int) -> ContractBlock:
+        return self.__function_dict[self.__function_list[i]]
+
+    def get_func_at_address(self, address: int) -> Optional[ContractBlock]:
+        return self.__function_dict.get(address)
+
+    def __len__(self):
+        return len(self.__function_list)
 
 class Contract():
     """
@@ -118,7 +146,7 @@ class Contract():
         self.symbols = []
         self.line_blocks = []
         self._symbolIdx = 0
-        self.functions = {}
+        self.functions = FunctionHandler()
 
     def get_stack_args(self, block_idx: int) -> Output:
         block = self.line_blocks[block_idx].lines
@@ -187,13 +215,16 @@ class Contract():
                         mapping[assignment] = out
                         operation.assign_to[idx] = out
                         var_num += 1
+            for idx, return_val in enumerate(block.return_vals):
+                if 'var' in return_val.value and return_val in mapping:
+                    block.return_vals[idx] = mapping[return_val]
 
     def __get_func(self, func_hex):
         if 'arg' in func_hex:
             return func_hex
         else:
             jump_addr = int(func_hex, 16)
-            func = self.functions.get(jump_addr)
+            func = self.functions.get_func_at_address(jump_addr)
             if func is not None:
                 return func.name
             else:
@@ -209,6 +240,23 @@ class Contract():
                     func = self.__get_func(operation.args[0].value)
                     block.lines[idx] = JumpLine(operation.address, func, operation.args[1])
     
+    def __add_final_functions(self):
+        """
+        This should add function calls to the end of functions
+        without an explicit jump, revert, or throw. The function
+        will point to the next function.
+        """
+        for block_idx, block in enumerate(self.functions.blocks()):
+            block: ContractBlock
+            has_end = False
+            for instr in block.lines:
+                if isinstance(instr, InstructionLine) and 'moves' in instr.instruction.tags:
+                    has_end = True
+                if isinstance(instr, JumpLine) and instr.jump_condition is None:
+                    has_end = True
+            if not has_end and block_idx + 1 < len(self.functions):
+                block.lines.append(JumpLine(-1, self.functions.get_func_at_index(block_idx + 1).name))
+
     def parse(self) -> List[List[ContractLine]]:
         self.line_blocks = []
         block_idx = 0
@@ -216,14 +264,16 @@ class Contract():
         for block in self.blocks:
             line = ContractBlock("func" + str(func_num))
             func_num += 1
-            self.functions[block.instructions[0].address] = line
+            self.functions.add_func(block.instructions[0].address, line)
             self.line_blocks.append(line)
             instr_idx = 0
+            stack_counter = 0 # at the end, this should equal 0
             for operation in block.instructions:
                 if operation.instruction.name == 'JUMPDEST':
                     continue
                 in_variables = []
                 out_variables = []
+                stack_counter += operation.instruction.added - operation.instruction.removed
                 if operation.arguments:
                     in_variables = operation.arguments
                 else:
@@ -241,8 +291,12 @@ class Contract():
                 line.add_line(instruction)
                 # self._symbolIdx += 1
                 instr_idx += 1
+            stack_counter += line.args_needed
+            # we need to resolve return values at the end
+            while stack_counter > 0:
+                line.return_vals.append(self.get_stack_args(block_idx))
+                stack_counter -= 1
             # for swap op codes, we have to wait until after parsing to remove them
-
             idx = 0
             while idx < len(line.lines):
                 if 'SWAP' in line.lines[idx].instruction.name or 'DUP' in line.lines[idx].instruction.name:
@@ -254,4 +308,5 @@ class Contract():
         self.__simplify_pushes()
         self.__simplify_variables()
         self.__replace_functions()
+        self.__add_final_functions()
         return self.line_blocks
