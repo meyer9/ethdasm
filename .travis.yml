@@ -3,7 +3,8 @@ python:
     - "3.6"
 before_install:
     - pip install coveralls
+    - pip install coveralls
 script:
-    - python -m unittest discover . "*_test.py"
+    - coverage run -m unittest discover . "*_test.py"
 after_success:
     - coveralls
