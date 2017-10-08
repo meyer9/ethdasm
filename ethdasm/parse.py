@@ -4,7 +4,7 @@ Parses opcodes into blocks of simplified opcodes.
 import math
 from typing import List
 
-import opcodes as oc
+import ethdasm.opcodes as oc
 
 
 class Instruction:

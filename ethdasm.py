@@ -1,6 +1,6 @@
 import argparse
-from contract import Contract
-from parse import Parser
+from ethdasm.contract import Contract
+from ethdasm.parse import Parser
 
 parser = argparse.ArgumentParser()
 parser.add_argument('input', help='input hex file to parse')

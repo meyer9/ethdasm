@@ -1,6 +1,6 @@
 import unittest
 
-import contract
+from ethdasm.contract import Contract, JumpLine
 
 
 class TestContract(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestContract(unittest.TestCase):
             ADD
         The output of this code should be 0x620 or 1568.
         """
-        c = contract.Contract('6020603081910201')
+        c = Contract('6020603081910201')
         c.parse()
         self.assertIn(0x30, map(lambda l: l.value, c.line_blocks[0].lines[-2].args))
         self.assertIn(0x20, map(lambda l: l.value, c.line_blocks[0].lines[-2].args))
@@ -33,12 +33,12 @@ class TestContract(unittest.TestCase):
             MUL
         There should be 2 different jump lines at the end of each block.
         """
-        c = contract.Contract('600260035b6002015b600402')
+        c = Contract('600260035b6002015b600402')
         c.parse()
-        self.assertIsInstance(c.line_blocks[0].lines[-1], contract.JumpLine)
+        self.assertIsInstance(c.line_blocks[0].lines[-1], JumpLine)
         self.assertEqual(c.line_blocks[0].lines[-1].args[0].value, 2)
         self.assertTrue(c.line_blocks[0].lines[-1].args[0].is_variable)
-        self.assertIsInstance(c.line_blocks[1].lines[-1], contract.JumpLine)
+        self.assertIsInstance(c.line_blocks[1].lines[-1], JumpLine)
         self.assertEqual(c.line_blocks[1].lines[-1].args[0].value, 3)
         self.assertTrue(c.line_blocks[1].lines[-1].args[0].is_variable)
 
@@ -48,7 +48,7 @@ class TestContract(unittest.TestCase):
             JUMPDEST
         This should not crash.
         """
-        c = contract.Contract('5b')
+        c = Contract('5b')
         c.parse()
     
     def test_math_simplification(self):
@@ -60,7 +60,7 @@ class TestContract(unittest.TestCase):
             MUL
             MUL
         """
-        c = contract.Contract('6002600260030202')
+        c = Contract('6002600260030202')
         c.parse()
         self.assertEqual(c.line_blocks[0].lines[0].args[0].value, 12)
     
@@ -79,7 +79,7 @@ class TestContract(unittest.TestCase):
             THROW
         The conditional jump should reference func2.
         """
-        c = contract.Contract('6003565b6002600351600c575bfe')
+        c = Contract('6003565b6002600351600c575bfe')
         c.parse()
         self.assertEqual(c.line_blocks[1].lines[-2].jump_to, 'func2')
 

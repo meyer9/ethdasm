@@ -1,7 +1,7 @@
 from typing import List, Optional, Iterator
 
-from opcodes import OpCode, get_opcode_by_mnemonic
-from parse import Parser, Instruction, Block
+from ethdasm.opcodes import OpCode, get_opcode_by_mnemonic
+from ethdasm.parse import Parser, Instruction, Block
 
 class Output():
     """
