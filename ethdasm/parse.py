@@ -56,6 +56,9 @@ class Parser:
             instr = oc.get_opcode_by_code(instruction)
             args = ''
             if instr.args > 0:
+                if len(contract_code) < 2 * instr.args:
+                    opcodes.append(Instruction(oc.get_opcode_by_mnemonic('THROW'), address, None))
+                    break
                 args = int(contract_code[0:2 * instr.args], 16)
                 contract_code = contract_code[2 * instr.args:]
                 offset += instr.args

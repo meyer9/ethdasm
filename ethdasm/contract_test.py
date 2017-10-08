@@ -82,6 +82,15 @@ class TestContract(unittest.TestCase):
         c = Contract('6003565b6002600351600c575bfe')
         c.parse()
         self.assertEqual(c.line_blocks[1].lines[-2].jump_to, 'func2')
+    
+    def test_push_error(self):
+        """
+        Tests push error where an instruction tries to push to the stack at the end of a contract.abs
+            PUSH ?
+        This should not crash.
+        """
+        c = Contract('64')
+        c.parse()
 
 if __name__ == '__main__':
     unittest.main()
