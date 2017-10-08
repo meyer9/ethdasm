@@ -63,6 +63,25 @@ class TestContract(unittest.TestCase):
         c = contract.Contract('6002600260030202')
         c.parse()
         self.assertEqual(c.line_blocks[0].lines[0].args[0].value, 12)
+    
+    def test_jump_arg_optimization(self):
+        """
+        Tests jump arg optimization:
+            PUSH 03
+            JUMP
+            JUMPDEST
+            PUSH 02
+            PUSH 03
+            MLOAD
+            PUSH 0c
+            JUMPI
+            JUMPDEST
+            THROW
+        The conditional jump should reference func2.
+        """
+        c = contract.Contract('6003565b6002600351600c575bfe')
+        c.parse()
+        self.assertEqual(c.line_blocks[1].lines[-2].jump_to, 'func2')
 
 if __name__ == '__main__':
     unittest.main()

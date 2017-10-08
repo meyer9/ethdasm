@@ -215,27 +215,27 @@ class Contract():
         var_num = 1
         for block in self.line_blocks:
             for operation in block.lines:
-                for idx, arg in enumerate(operation.args):
-                    if arg.is_variable:
-                        if arg not in mapping:
-                            raise RuntimeError('Found arg without a mapping.', arg.value)
-                        operation.args[idx] = mapping[arg]
-                for idx, assignment in enumerate(operation.assign_to):
-                    if assignment.is_variable:
-                        out = Output(var_num, variable=True)
-                        mapping[assignment] = out
-                        operation.assign_to[idx] = out
-                        var_num += 1
+                if isinstance(operation, InstructionLine):
+                    for idx, arg in enumerate(operation.args):
+                        if arg.is_variable:
+                            if arg not in mapping:
+                                raise RuntimeError('Found arg without a mapping.', arg.value)
+                            operation.args[idx] = mapping[arg]
+                    for idx, assignment in enumerate(operation.assign_to):
+                        if assignment.is_variable:
+                            out = Output(var_num, variable=True)
+                            mapping[assignment] = out
+                            operation.assign_to[idx] = out
+                            var_num += 1
             for idx, return_val in enumerate(block.return_vals):
                 if return_val.is_variable and return_val in mapping:
                     block.return_vals[idx] = mapping[return_val]
 
-    def __get_func(self, func_hex):
-        if not arg.constant and 'arg' in func_hex:
+    def __get_func(self, func_hex: Output):
+        if func_hex.is_arg or func_hex.is_variable:
             return func_hex
         else:
-            jump_addr = int(func_hex, 16)
-            func = self.functions.get_func_at_address(jump_addr)
+            func = self.functions.get_func_at_address(func_hex.value)
             if func is not None:
                 return func.name
             else:
@@ -245,10 +245,10 @@ class Contract():
         for block in self.line_blocks:
             for idx, operation in enumerate(block.lines):
                 if operation.instruction.name == 'JUMP':
-                    func = self.__get_func(operation.args[0].value)
+                    func = self.__get_func(operation.args[0])
                     block.lines[idx] = JumpLine(operation.address, func)
                 elif operation.instruction.name == 'JUMPI':
-                    func = self.__get_func(operation.args[0].value)
+                    func = self.__get_func(operation.args[0])
                     block.lines[idx] = JumpLine(operation.address, func, operation.args[1])
     
     def __add_final_functions(self):
