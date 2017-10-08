@@ -145,7 +145,7 @@ class Contract():
     Represents an entire Ethereum contract. Keeps track of symbols,
     parses opcodes into pseudo-code, and simplifies the pseudo-code.
     """
-    line_blocks: List[List[ContractLine]]
+    line_blocks: List[ContractBlock]
     blocks: List[Block]
 
     def __init__(self, code):
