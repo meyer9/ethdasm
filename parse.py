@@ -40,8 +40,6 @@ class Parser:
     """
     Parses EVM code into blocks of optimized code.
     """
-    def __init__(self):
-        pass
 
     @staticmethod
     def __parse_ops(contract_code: str) -> List[Instruction]:
@@ -164,22 +162,3 @@ class Parser:
                 instructions[i] = Instruction(oc.get_opcode_by_code(op_code), instructions[i].address, [equiv])
             i += 1
         return instructions
-
-
-def main():
-    """
-    Parses contract.evm and prints it out into a human-readable format.
-    """
-    with open('contract.evm', 'r') as contract:
-        blocks = Parser.parse(contract.read())
-        for block in blocks:
-            print()
-            print('; Procedure ' + hex(block.address))
-            for operation in block.instructions:
-                print('[{0: >8}] | {1: <20} | {2}'.format(
-                    hex(operation.address),
-                    operation.instruction.name,
-                    operation.arguments))
-
-if __name__ == '__main__':
-    main()
