@@ -58,7 +58,7 @@ class Parser:
             instr = oc.get_opcode_by_code(instruction)
             args = ''
             if instr.args > 0:
-                args = contract_code[0:2 * instr.args]
+                args = int(contract_code[0:2 * instr.args], 16)
                 contract_code = contract_code[2 * instr.args:]
                 offset += instr.args
             opcodes.append(Instruction(instr, address, [args] if args else None))
@@ -149,14 +149,18 @@ class Parser:
         return instructions
 
     @staticmethod
+    def num_bytes(i: int):
+        return math.ceil(math.log(i + 1) / math.log(16) / 2)
+
+    @staticmethod
     def __optimize_math(instructions: [Instruction]) -> [Instruction]:
         i = 0
         while i < len(instructions):
             equiv_func = instructions[i].instruction.equivalent_function
             if instructions[i].arguments and equiv_func and len(instructions[i].arguments) == instructions[i].instruction.removed:
-                equiv = hex(equiv_func(*map(lambda n: int(n, 16), instructions[i].arguments)))[2:]
-                push_num = int(min(math.ceil(len(equiv) / 2) - 1, 31))
-                op_code = hex(int('60', 16) + push_num)[2:]
+                equiv = equiv_func(*instructions[i].arguments)
+                push_num = Parser.num_bytes(equiv)
+                op_code = hex(96 + push_num)[2:]
                 instructions[i] = Instruction(oc.get_opcode_by_code(op_code), instructions[i].address, [equiv])
             i += 1
         return instructions

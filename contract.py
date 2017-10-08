@@ -8,8 +8,10 @@ class Output():
     Represents the output of an instruction. Also can be considered
     a single value on the stack. Can be used.
     """
-    def __init__(self, value):
+    def __init__(self, value: int, variable=False, arg=False):
         self.value = value
+        self.is_variable = variable
+        self.is_arg = arg
         self.used = False
     def use(self):
         """
@@ -18,7 +20,12 @@ class Output():
         """
         self.used = True
     def __str__(self):
-        return self.value
+        if self.is_variable:
+            return 'var' + str(self.value)
+        elif self.is_arg:
+            return 'arg' + str(self.value)
+        else:
+            return hex(self.value)
 
 class ContractLine():
     """
@@ -38,9 +45,9 @@ class InstructionLine(ContractLine):
 
     assign_to: List[str]
     instruction: Instruction
-    args: List
+    args: List[Output]
 
-    def __init__(self, address: int, assign_to: List[str], instruction: OpCode, args: List):
+    def __init__(self, address: int, assign_to: List[str], instruction: OpCode, args: List[Output]):
         self.assign_to = assign_to
         self.instruction = instruction
         self.args = args
@@ -49,7 +56,7 @@ class InstructionLine(ContractLine):
     def __str__(self):
         l = ""
         if self.assign_to:
-            l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
+            l += ', '.join(map(lambda arg: str(arg), self.assign_to)) + " = "
         if self.instruction.name.startswith('PUSH'):
             l += str(self.args[0])
         elif not self.instruction.infix_operator:
@@ -104,7 +111,7 @@ class ContractBlock:
         self.lines.append(line)
     
     def __str__(self):
-        return "def {}({}):".format(self.name, ", ".join(map(lambda x: "arg" + str(x), range(self.args_needed))), list(map(str, self.return_vals)))
+        return "def {}({}):".format(self.name, ", ".join(map(lambda x: "arg" + str(x), range(self.args_needed))))
 
 
 class FunctionHandler:
@@ -209,22 +216,22 @@ class Contract():
         for block in self.line_blocks:
             for operation in block.lines:
                 for idx, arg in enumerate(operation.args):
-                    if 'var' in arg.value:
+                    if arg.is_variable:
                         if arg not in mapping:
                             raise RuntimeError('Found arg without a mapping.', arg.value)
                         operation.args[idx] = mapping[arg]
                 for idx, assignment in enumerate(operation.assign_to):
-                    if 'arg' not in assignment.value:
-                        out = Output('var{}'.format(var_num))
+                    if assignment.is_variable:
+                        out = Output(var_num, variable=True)
                         mapping[assignment] = out
                         operation.assign_to[idx] = out
                         var_num += 1
             for idx, return_val in enumerate(block.return_vals):
-                if 'var' in return_val.value and return_val in mapping:
+                if return_val.is_variable and return_val in mapping:
                     block.return_vals[idx] = mapping[return_val]
 
     def __get_func(self, func_hex):
-        if 'arg' in func_hex:
+        if not arg.constant and 'arg' in func_hex:
             return func_hex
         else:
             jump_addr = int(func_hex, 16)
@@ -288,11 +295,11 @@ class Contract():
                     for i in range(operation.instruction.removed):
                         a = self.get_stack_args(block_idx)
                         if a is None:
-                            a = Output('arg' + str(line.args_needed))
+                            a = Output(line.args_needed, arg=True)
                             line.args_needed += 1
                         in_variables.append(a)
                 for i in range(operation.instruction.added):
-                    out_variables.append(Output('var' + str(self._symbolIdx)))
+                    out_variables.append(Output(self._symbolIdx, variable=True))
                     self._symbolIdx += 1
                 instruction = InstructionLine(address=operation.address, assign_to=out_variables,
                                            instruction=operation.instruction, args=in_variables)
