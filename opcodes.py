@@ -96,10 +96,10 @@ for i in range(0, 256):
 	if not _OPCODES.get(hex(i)[2:].zfill(2)):
 			_OPCODES[hex(i)[2:].zfill(2)] = OpCode('THROW', 0, 0, 0, None, None, ['moves'])
 
-def get_opcode_by_code(sym):
+def get_opcode_by_code(sym: str) -> OpCode:
 	return _OPCODES[sym]
 
-def get_opcode_by_mnemonic(mne):
+def get_opcode_by_mnemonic(mne: str) -> OpCode:
 	i = 0
 	while _OPCODES[hex(i)[2:].zfill(2)].name != mne:
 		i += 1
