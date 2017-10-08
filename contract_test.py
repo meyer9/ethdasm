@@ -41,6 +41,7 @@ class TestContract(unittest.TestCase):
         self.assertIsInstance(c.line_blocks[1].lines[-1], contract.JumpLine)
         self.assertEqual(c.line_blocks[1].lines[-1].args[0].value, 3)
         self.assertTrue(c.line_blocks[1].lines[-1].args[0].is_variable)
+
     def test_single_jumpdest(self):
         """
         Tests the following EVM code decompilation:
@@ -49,6 +50,19 @@ class TestContract(unittest.TestCase):
         """
         c = contract.Contract('5b')
         c.parse()
+    
+    def test_math_simplification(self):
+        """
+        Tests basic math simplification:
+            PUSH 02
+            PUSH 02
+            PUSH 03
+            MUL
+            MUL
+        """
+        c = contract.Contract('6002600260030202')
+        c.parse()
+        self.assertEqual(c.line_blocks[0].lines[0].args[0].value, 12)
 
 if __name__ == '__main__':
     unittest.main()
