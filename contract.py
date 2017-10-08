@@ -50,7 +50,9 @@ class InstructionLine(ContractLine):
         l = ""
         if self.assign_to:
             l += ', '.join(map(lambda arg: arg.value, self.assign_to)) + " = "
-        if not self.instruction.infix_operator:
+        if self.instruction.name.startswith('PUSH'):
+            l += str(self.args[0])
+        elif not self.instruction.infix_operator:
             l += self.instruction.name + '({0})'.format(', '.join(map(str, self.args) or []))
         else:
             l += '{0} {1} {2}'.format(self.args[0], self.instruction.infix_operator, self.args[1])
@@ -66,19 +68,21 @@ class JumpLine(ContractLine):
 
     jump_to: str
     jump_condition: Optional[Output]
+    args: Optional[List[Output]]
 
-    def __init__(self, address: int, jump_to: str, jump_condition: Optional[Output]=None):
+    def __init__(self, address: int, jump_to: str, jump_condition: Optional[Output]=None, args: Optional[List[Output]]=None):
         self.jump_to = jump_to
         if self.jump_to is None:
             self.jump_to = 'THROW'
         self.jump_condition = jump_condition
+        self.args = args
         super().__init__(address)
 
     def __str__(self):
         if self.jump_condition is not None:
-            return "if {}: {}()".format(self.jump_condition, self.jump_to)
+            return "if {}: {}({})".format(self.jump_condition, self.jump_to, ', '.join(list(map(str, self.args))) if self.args else '')
         else:
-            return "{}()".format(self.jump_to)
+            return "{}({})".format(self.jump_to, ', '.join(list(map(str, self.args))) if self.args else '')
 
 
 class ContractBlock:
@@ -148,7 +152,7 @@ class Contract():
         self._symbolIdx = 0
         self.functions = FunctionHandler()
 
-    def get_stack_args(self, block_idx: int) -> Output:
+    def get_stack_args(self, block_idx: int, use: bool=True) -> Output:
         block = self.line_blocks[block_idx].lines
         for line_num in range(len(block) - 1, -1, -1):
             line = block[line_num]
@@ -156,7 +160,7 @@ class Contract():
                 i = 0
                 while i < len(line.assign_to):
                     if not line.assign_to[i].used:
-                        line.assign_to[i].use()
+                        if use: line.assign_to[i].use()
                         if i == 0:
                             return line.args[-1]
                         else:
@@ -166,7 +170,7 @@ class Contract():
                 i = 0
                 while i < len(line.assign_to):
                     if not line.assign_to[i].used:
-                        line.assign_to[i].use()
+                        if use: line.assign_to[i].use()
                         if i == 0:
                             return line.args[-1]
                         elif i == len(line.assign_to) - 1:
@@ -176,7 +180,7 @@ class Contract():
                     i += 1
             for var in line.assign_to[::-1]:
                 if not var.used:
-                    var.use()
+                    if use: var.use()
                     return var
         return None
 
@@ -194,7 +198,7 @@ class Contract():
             i = 0
             while i < len(block.lines):
                 operation = block.lines[i]
-                if 'PUSH' in operation.instruction.name:
+                if isinstance(operation, InstructionLine) and 'PUSH' in operation.instruction.name and operation.assign_to[0].used == True:
                     del block.lines[i]
                     i -= 1
                 i += 1
@@ -255,7 +259,11 @@ class Contract():
                 if isinstance(instr, JumpLine) and instr.jump_condition is None:
                     has_end = True
             if not has_end and block_idx + 1 < len(self.functions):
-                block.lines.append(JumpLine(-1, self.functions.get_func_at_index(block_idx + 1).name))
+                function = self.functions.get_func_at_index(block_idx + 1)
+                arguments = []
+                for i in range(function.args_needed):
+                    arguments.append(block.return_vals[i])
+                block.lines.append(JumpLine(-1, function.name, args=arguments))
 
     def parse(self) -> List[List[ContractLine]]:
         self.line_blocks = []
@@ -294,7 +302,7 @@ class Contract():
             stack_counter += line.args_needed
             # we need to resolve return values at the end
             while stack_counter > 0:
-                line.return_vals.append(self.get_stack_args(block_idx))
+                line.return_vals.append(self.get_stack_args(block_idx, use = False))
                 stack_counter -= 1
             # for swap op codes, we have to wait until after parsing to remove them
             idx = 0
@@ -306,7 +314,7 @@ class Contract():
             block_idx += 1
         self.line_blocks[0].name = 'main'
         self.__simplify_pushes()
-        self.__simplify_variables()
         self.__replace_functions()
+        self.__simplify_variables()
         self.__add_final_functions()
         return self.line_blocks
