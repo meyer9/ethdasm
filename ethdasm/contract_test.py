@@ -92,5 +92,9 @@ class TestContract(unittest.TestCase):
         c = Contract('64')
         c.parse()
 
+    def test_push_0(self):
+        c = Contract('6000600201')
+        c.parse()
+
 if __name__ == '__main__':
     unittest.main()

@@ -63,7 +63,6 @@ class Parser:
                 contract_code = contract_code[2 * instr.args:]
                 offset += instr.args
             opcodes.append(Instruction(instr, address, args))
-            print(address, opcodes[-1], opcodes[-1].arguments)
             address += offset
         return opcodes
 
