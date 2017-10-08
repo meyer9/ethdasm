@@ -1,0 +1,9 @@
+language: python
+python:
+    - "3.6"
+before_install:
+    - pip install coveralls
+script:
+    - python -m unittest discover . "*_test.py"
+after_success:
+    - coveralls
