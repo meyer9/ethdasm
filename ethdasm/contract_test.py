@@ -95,6 +95,10 @@ class TestContract(unittest.TestCase):
     def test_push_0(self):
         c = Contract('6000600201')
         c.parse()
+    
+    def test_neg_numbers(self):
+        c = Contract('6023602003')
+        c.parse()
 
 if __name__ == '__main__':
     unittest.main()

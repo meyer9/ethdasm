@@ -159,7 +159,7 @@ class Parser:
         while i < len(instructions):
             equiv_func = instructions[i].instruction.equivalent_function
             if instructions[i].arguments and equiv_func and len(instructions[i].arguments) == instructions[i].instruction.removed:
-                equiv = equiv_func(*instructions[i].arguments)
+                equiv = equiv_func(*instructions[i].arguments) & (2 ** 256 - 1)
                 push_num = Parser.num_bytes(equiv)
                 op_code = hex(96 + push_num)[2:]
                 instructions[i] = Instruction(oc.get_opcode_by_code(op_code), instructions[i].address, [equiv])
