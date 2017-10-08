@@ -41,6 +41,14 @@ class TestContract(unittest.TestCase):
         self.assertIsInstance(c.line_blocks[1].lines[-1], contract.JumpLine)
         self.assertEqual(c.line_blocks[1].lines[-1].args[0].value, 3)
         self.assertTrue(c.line_blocks[1].lines[-1].args[0].is_variable)
+    def test_single_jumpdest(self):
+        """
+        Tests the following EVM code decompilation:
+            JUMPDEST
+        This should not crash.
+        """
+        c = contract.Contract('5b')
+        c.parse()
 
 if __name__ == '__main__':
     unittest.main()

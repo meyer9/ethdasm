@@ -279,6 +279,8 @@ class Contract():
         for block in self.blocks:
             line = ContractBlock("func" + str(func_num))
             func_num += 1
+            if len(block.instructions) == 0:
+                continue
             self.functions.add_func(block.instructions[0].address, line)
             self.line_blocks.append(line)
             instr_idx = 0
